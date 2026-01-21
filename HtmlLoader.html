@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Game Loader Pro — Data URL Edition</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+    body {
+        margin: 0;
+        background: #0d0d0f;
+        color: white;
+        font-family: system-ui, sans-serif;
+        padding: 20px;
+        text-align: center;
+        transition: background 0.3s, color 0.3s;
+    }
+    h1 { margin-top: 0; }
+
+    /* SETTINGS BUTTON */
+    .settings-btn {
+        position: fixed;
+        top: 12px;
+        left: 12px;
+        background: #222;
+        border: 1px solid #444;
+        color: white;
+        padding: 6px 10px;
+        border-radius: 6px;
+        cursor: pointer;
+        z-index: 1000;
+        font-size: 16px;
+    }
+
+    /* SETTINGS OVERLAY */
+    .settings-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(0,0,0,0.65);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 999;
+    }
+
+    .settings-panel {
+        background: #1a1a1d;
+        padding: 20px;
+        border-radius: 10px;
+        width: 260px;
+        position: relative;
+        border: 1px solid #333;
+        box-shadow: 0 0 20px rgba(0,0,0,0.6);
+        animation: popIn 0.2s ease-out;
+    }
+
+    @keyframes popIn {
+        from { transform: scale(0.85); opacity: 0; }
+        to { transform: scale(1); opacity: 1; }
+    }
+
+    .close-btn {
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        background: #333;
+        border: none;
+        color: white;
+        padding: 4px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    /* GAME AREA */
+    #gameContainer {
+        width: 100%;
+        max-width: 900px;
+        height: 600px;
+        margin: 20px auto;
+        background: black;
+        border: 2px solid #333;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+    }
+    iframe {
+        width: 100%;
+        height: 100%;
+        border: none;
+        background: black;
+    }
+    #overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0,0,0,0.6);
+        color: #ccc;
+        font-size: 14px;
+        pointer-events: none;
+    }
+
+    /* BUTTONS */
+    .btn {
+        background: #ff4b81;
+        border: none;
+        padding: 10px 18px;
+        border-radius: 6px;
+        color: white;
+        font-weight: bold;
+        cursor: pointer;
+        margin: 5px;
+    }
+    input[type=file] {
+        margin: 10px;
+    }
+</style>
+</head>
+<body>
+
+<!-- SETTINGS BUTTON -->
+<button id="settingsBtn" class="settings-btn">⚙️</button>
+
+<!-- SETTINGS OVERLAY -->
+<div id="settingsOverlay" class="settings-overlay">
+    <div class="settings-panel">
+        <button id="closeSettings" class="close-btn">✕</button>
+        <h2>Settings</h2>
+
+        <label>Theme:</label>
+        <select id="themeSelect">
+            <option value="dark">Dark</option>
+            <option value="light">Light</option>
+            <option value="neon">Neon</option>
+        </select>
+
+        <label style="display:flex;align-items:center;gap:6px;margin-top:12px;">
+            <input type="checkbox" id="panicToggle">
+            Enable Panic Keybind (Ctrl + 0)
+        </label>
+
+        <p style="font-size:12px;color:#aaa;margin-top:10px;">
+            (Settings reset on reload — data‑URL limitation)
+        </p>
+
+        <hr style="margin:16px 0; border: none; border-top: 1px solid #444;">
+
+        <div style="font-size:12px; color:#aaa; text-align:center;">
+            <p>Creator: <strong>Madoc Treasure</strong></p>
+            <p>Credit to <strong>Copilot</strong></p>
+        </div>
+
+        <button id="openLoaderTabBtn" class="btn" style="width:100%; margin-top:15px;">
+            Open Loader in New Tab
+        </button>
+    </div>
+</div>
+
+<h1>Game Loader Pro — Data URL Edition</h1>
+<p>Loads single‑file HTML games. External assets are not supported in data URLs.</p>
+
+<input type="file" id="fileInput" accept=".html">
+<button class="btn" id="fullscreenBtn" disabled>Fullscreen</button>
+<button class="btn" id="launchTabBtn" disabled>Open in New Tab</button>
+
+<div id="gameContainer">
+    <iframe id="frame"></iframe>
+    <div id="overlay">Load a game to begin</div>
+</div>
+
+<script>
+/* CORE ELEMENTS */
+const fileInput = document.getElementById("fileInput");
+const frame = document.getElementById("frame");
+const overlay = document.getElementById("overlay");
+const fullscreenBtn = document.getElementById("fullscreenBtn");
+const launchTabBtn = document.getElementById("launchTabBtn");
+
+let currentBlobURL = null;
+
+/* SETTINGS ELEMENTS */
+const settingsBtn = document.getElementById("settingsBtn");
+const settingsOverlay = document.getElementById("settingsOverlay");
+const closeSettings = document.getElementById("closeSettings");
+const themeSelect = document.getElementById("themeSelect");
+const openLoaderTabBtn = document.getElementById("openLoaderTabBtn");
+const panicToggle = document.getElementById("panicToggle");
+
+let panicEnabled = false;
+
+/* LOAD GAME */
+function loadGame(htmlText) {
+    if (currentBlobURL) URL.revokeObjectURL(currentBlobURL);
+
+    const blob = new Blob([htmlText], { type: "text/html" });
+    currentBlobURL = URL.createObjectURL(blob);
+
+    frame.src = currentBlobURL;
+    overlay.style.display = "none";
+    fullscreenBtn.disabled = false;
+    launchTabBtn.disabled = false;
+
+    setTimeout(() => {
+        try { frame.contentWindow.focus(); } catch(e){}
+    }, 100);
+}
+
+/* FILE INPUT */
+fileInput.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => loadGame(ev.target.result);
+    reader.readAsText(file);
+});
+
+/* DRAG & DROP */
+document.addEventListener("dragover", e => e.preventDefault());
+document.addEventListener("drop", e => {
+    e.preventDefault();
+    const file = e.dataTransfer.files[0];
+    if (!file || !file.name.endsWith(".html")) return;
+
+    const reader = new FileReader();
+    reader.onload = ev => loadGame(ev.target.result);
+    reader.readAsText(file);
+});
+
+/* FULLSCREEN */
+fullscreenBtn.addEventListener("click", () => {
+    const container = document.getElementById("gameContainer");
+    if (container.requestFullscreen) container.requestFullscreen();
+});
+
+/* NEW TAB FULLSCREEN GAME LAUNCH */
+launchTabBtn.addEventListener("click", () => {
+    if (!currentBlobURL) return;
+
+    const newTab = window.open("about:blank");
+
+    newTab.document.write(`
+        <style>
+            html, body {
+                margin: 0;
+                height: 100%;
+                background: black;
+                overflow: hidden;
+            }
+            iframe {
+                width: 100%;
+                height: 100%;
+                border: none;
+            }
+        </style>
+
+        <iframe src="${currentBlobURL}" allow="fullscreen; autoplay; gamepad; keyboard-lock; pointer-lock"></iframe>
+
+        <script>
+            const frame = document.querySelector("iframe");
+            frame.onload = () => {
+                const req = frame.requestFullscreen || frame.webkitRequestFullscreen;
+                if (req) req.call(frame);
+            };
+        <\/script>
+    `);
+});
+
+/* SETTINGS OVERLAY LOGIC */
+settingsBtn.addEventListener("click", () => {
+    settingsOverlay.style.display = "flex";
+});
+
+closeSettings.addEventListener("click", () => {
+    settingsOverlay.style.display = "none";
+});
+
+/* THEMES */
+themeSelect.addEventListener("change", () => {
+    const theme = themeSelect.value;
+
+    if (theme === "light") {
+        document.body.style.background = "#f0f0f0";
+        document.body.style.color = "#111";
+    } else if (theme === "neon") {
+        document.body.style.background = "linear-gradient(135deg, #0f001a, #2a0044)";
+        document.body.style.color = "#fff";
+    } else {
+        document.body.style.background = "#0d0d0f";
+        document.body.style.color = "#fff";
+    }
+});
+
+/* PANIC KEYBIND */
+panicToggle.addEventListener("change", () => {
+    panicEnabled = panicToggle.checked;
+});
+
+document.addEventListener("keydown", (e) => {
+    if (panicEnabled && e.ctrlKey && e.key === "0") {
+        window.location.href = "https://classroom.google.com";
+    }
+});
+
+/* MIGRATE LOADER TO NEW TAB (FIXED) */
+openLoaderTabBtn.addEventListener("click", () => {
+    const html = document.documentElement.outerHTML;
+    const newTab = window.open("about:blank");
+
+    if (!newTab) return;
+
+    newTab.document.open();
+    newTab.document.write(html);
+    newTab.document.close();
+});
+</script>
+
+</body>
+</html>
